@@ -1,0 +1,396 @@
+ドキュメント
+APIリファレンス
+ベクトル埋め込み
+テキストを数字に変換する方法を学び、検索などのユースケースを実現します。
+新しい埋め込みモデル
+text-embedding-3-small最新かつ最高性能の埋め込みモデルであると がtext-embedding-3-large利用可能になりました。これらのモデルは、コスト削減、多言語対応力の向上、そして全体のサイズを制御するための新しいパラメータを備えています。
+埋め込みとは何ですか?
+OpenAIのテキスト埋め込みは、テキスト文字列の関連性を測定します。埋め込みは主に以下の目的で使用されます。
+
+検索（結果はクエリ文字列との関連性によってランク付けされます）
+クラスタリング（テキスト文字列を類似性によってグループ化する）
+おすすめ（関連するテキスト文字列を含むアイテムがおすすめされる）
+異常検出（関連性の低い外れ値を特定する）
+多様性測定（類似性分布を分析する）
+分類（テキスト文字列が最も類似したラベルによって分類される）
+埋め込みは浮動小数点数のベクトル（リスト）です。
+距離
+2つのベクトル間の距離は、それらの関連性を測る指標です。距離が小さいほど関連性が高く、距離が大きいほど関連性が低いことを示します。
+
+弊社の
+価格ページ
+埋め込み料金についてはこちらをご覧ください。リクエスト数は、
+トークン
+の中で
+入力
+。
+
+埋め込みを取得する方法
+埋め込みを取得するには、テキスト文字列を
+埋め込みAPIエンドポイント
+埋め込みモデル名（例： ）とともにtext-embedding-3-small：
+
+例: 埋め込みの取得
+import OpenAI from "openai";
+const openai = new OpenAI();
+
+const embedding = await openai.embeddings.create({
+  model: "text-embedding-3-small",
+  input: "Your text string goes here",
+  encoding_format: "float",
+});
+
+console.log(embedding);
+レスポンスには、埋め込みベクトル（浮動小数点数のリスト）と追加のメタデータが含まれます。埋め込みベクトルを抽出してベクトルデータベースに保存し、様々なユースケースに使用することができます。
+
+{
+  "object": "list",
+  "data": [
+    {
+      "object": "embedding",
+      "index": 0,
+      "embedding": [
+        -0.006929283495992422,
+        -0.005336422007530928,
+        -4.547132266452536e-05,
+        -0.024047505110502243
+      ],
+    }
+  ],
+  "model": "text-embedding-3-small",
+  "usage": {
+    "prompt_tokens": 5,
+    "total_tokens": 5
+  }
+}
+デフォルトでは、埋め込みベクトルの長さは または です。1536概念text-embedding-3-small表現特性を失わずに埋め込みの次元を減らすには、3072text-embedding-3-large
+寸法パラメータ
+埋め込みディメンションの詳細については、
+埋め込みユースケースセクション
+。
+
+埋め込みモデル
+OpenAIは、2つの強力な第3世代埋め込みモデル（-3モデルIDに で示される）を提供しています。埋め込みv3についてはこちらをご覧ください。
+発表ブログ投稿
+詳細についてはこちらをご覧ください。
+
+使用量は入力トークン単位で課金されます。以下は、テキストページあたりの1米ドルあたりの料金例です（1ページあたり約800トークンと仮定）。
+
+モデル	~ 1ドルあたりページ数	パフォーマンス
+MTEB
+評価	最大入力
+テキスト埋め込み 3 小	62,500	62.3%	8192
+テキスト埋め込み 3 大きい	9,615	64.6%	8192
+テキスト埋め込みADA-002	12,500	61.0%	8192
+ユースケース
+ここでは、いくつかの代表的な使用例を示します。
+Amazon 高級食品レビューデータセット
+。
+
+埋め込みの取得
+このデータセットには、2012年10月までにAmazonユーザーが投稿した食品レビュー合計568,454件が含まれています。説明のために、最新のレビュー1,000件のうちのサブセットを使用しています。レビューは英語で書かれており、肯定的または否定的な内容が多いです。各レビューにはProductId、、、、レビュータイトル（）、レビュー本文（）が付いています。例えば、UserIdScoreSummaryText
+
+製品ID	ユーザーID	スコア	まとめ	文章
+B001E4KFG0	A3SGXH7AUHU8GW	5	良質なドッグフード	私はVitalityの缶詰をいくつか購入しました。
+B00813GRG4	A1D87F6ZCVE5NK	1	宣伝通りではない	商品は「ジャンボ ソルテッド ピーナッツ」というラベルが貼られて届きました。
+以下では、レビューの要約とレビュー本文を1つの結合テキストに結合します。モデルはこの結合テキストをエンコードし、単一のベクトル埋め込みを出力します。
+
+from openai import OpenAI
+client = OpenAI()
+
+def get_embedding(text, model="text-embedding-3-small"):
+    text = text.replace("\n", " ")
+    return client.embeddings.create(input = [text], model=model).data[0].embedding
+
+df['ada_embedding'] = df.combined.apply(lambda x: get_embedding(x, model='text-embedding-3-small'))
+df.to_csv('output/embedded_1k_reviews.csv', index=False)
+保存されたファイルからデータを読み込むには、次のコマンドを実行します。
+
+import pandas as pd
+
+df = pd.read_csv('output/embedded_1k_reviews.csv')
+df['ada_embedding'] = df.ada_embedding.apply(eval).apply(np.array)
+埋め込み次元の削減
+より大きな埋め込みを使用すると、たとえば、取得のためにベクトル ストアに格納すると、通常、より小さな埋め込みを使用する場合よりもコストがかかり、コンピューティング、メモリ、ストレージの消費量も多くなります。
+
+新しい埋め込みモデルは両方とも訓練済みです
+技術を使って
+これにより、開発者は埋め込みを利用する際のパフォーマンスとコストをトレードオフできます。具体的には、埋め込みの概念表現特性を失うことなく、埋め込みを短縮（つまり、シーケンスの末尾からいくつかの数字を削除）することができます。
+dimensions
+APIパラメータ
+例えば、MTEBベンチマークでは、text-embedding-3-large埋め込みを256のサイズに短縮しても、text-embedding-ada-0021536のサイズの短縮されていない埋め込みよりも優れたパフォーマンスが得られます。寸法の変更がパフォーマンスに及ぼす影響の詳細については、
+埋め込みv3のリリースに関するブログ投稿
+。
+
+一般的には、dimensions埋め込みを作成する際にパラメータを使用することをお勧めします。場合によっては、埋め込み次元を生成した後に変更する必要があるかもしれません。次元を手動で変更する場合は、以下に示すように、埋め込み次元を必ず正規化してください。
+
+from openai import OpenAI
+import numpy as np
+
+client = OpenAI()
+
+def normalize_l2(x):
+    x = np.array(x)
+    if x.ndim == 1:
+        norm = np.linalg.norm(x)
+        if norm == 0:
+            return x
+        return x / norm
+    else:
+        norm = np.linalg.norm(x, 2, axis=1, keepdims=True)
+        return np.where(norm == 0, x, x / norm)
+
+
+response = client.embeddings.create(
+    model="text-embedding-3-small", input="Testing 123", encoding_format="float"
+)
+
+cut_dim = response.data[0].embedding[:256]
+norm_dim = normalize_l2(cut_dim)
+
+print(norm_dim)
+次元を動的に変更することで、非常に柔軟な使用が可能になります。例えば、最大1024次元までの埋め込みしかサポートしないベクターデータストアを使用している場合でも、開発者は最適な埋め込みモデルを使用しtext-embedding-3-large、APIパラメータに1024を指定することdimensionsで、埋め込みを3072次元から短縮できます。これにより、精度は多少低下しますが、ベクターサイズは小さくなります。
+
+埋め込みベースの検索を使用した質問応答
+
+多くの場合、モデルが、ユーザークエリへの応答を生成する際にアクセス可能にしたい重要な事実や情報を含むデータで学習されていないという状況がよくあります。これを解決する一つの方法は、以下に示すように、モデルのコンテキストウィンドウに追加情報を入れることです。これは多くのユースケースで効果的ですが、トークンコストの増加につながります。このノートブックでは、このアプローチと埋め込みベース検索とのトレードオフを検討します。
+
+query = f"""Use the below article on the 2022 Winter Olympics to answer the subsequent question. If the answer cannot be found, write "I don't know."
+
+Article:
+\"\"\"
+{wikipedia_article_on_curling}
+\"\"\"
+
+Question: Which athletes won the gold medal in curling at the 2022 Winter Olympics?"""
+
+response = client.chat.completions.create(
+    messages=[
+        {'role': 'system', 'content': 'You answer questions about the 2022 Winter Olympics.'},
+        {'role': 'user', 'content': query},
+    ],
+    model=GPT_MODEL,
+    temperature=0,
+)
+
+print(response.choices[0].message.content)
+埋め込みを使用したテキスト検索
+
+最も関連性の高いドキュメントを取得するには、クエリと各ドキュメントの埋め込みベクトル間のコサイン類似度を使用し、最も高いスコアのドキュメントを返します。
+
+from openai.embeddings_utils import get_embedding, cosine_similarity
+
+def search_reviews(df, product_description, n=3, pprint=True):
+    embedding = get_embedding(product_description, model='text-embedding-3-small')
+    df['similarities'] = df.ada_embedding.apply(lambda x: cosine_similarity(x, embedding))
+    res = df.sort_values('similarities', ascending=False).head(n)
+    return res
+
+res = search_reviews(df, 'delicious beans', n=3)
+埋め込みを使用したコード検索
+
+コード検索は埋め込みベースのテキスト検索と同様に機能します。指定されたリポジトリ内のすべてのPythonファイルからPython関数を抽出する手法を提供します。各関数はtext-embedding-3-smallモデルによってインデックス化されます。
+
+コード検索を実行するために、同じモデルを用いてクエリを自然言語に埋め込みます。そして、得られたクエリ埋め込みと各関数埋め込みのコサイン類似度を計算します。コサイン類似度が最も高い結果が最も関連性の高いものとなります。
+
+from openai.embeddings_utils import get_embedding, cosine_similarity
+
+df['code_embedding'] = df['code'].apply(lambda x: get_embedding(x, model='text-embedding-3-small'))
+
+def search_functions(df, code_query, n=3, pprint=True, n_lines=7):
+    embedding = get_embedding(code_query, model='text-embedding-3-small')
+    df['similarities'] = df.code_embedding.apply(lambda x: cosine_similarity(x, embedding))
+
+    res = df.sort_values('similarities', ascending=False).head(n)
+    return res
+
+res = search_functions(df, 'Completions API tests', n=3)
+埋め込みを使用した推奨事項
+
+埋め込みベクトル間の距離が短いほど類似性が高くなるため、埋め込みは推奨に役立ちます。
+
+以下に、基本的な推薦関数を示します。この関数は、文字列のリストと1つの「ソース」文字列を受け取り、それらの埋め込みを計算し、類似度の高いものから低いものの順に文字列のランキングを返します。具体的な例として、以下のリンク先のノートブックでは、この関数のバージョンを
+AGニュースデータセット
+(2,000 件のニュース記事の説明をサンプリング)、任意のソース記事に最も類似する上位 5 件の記事を返します。
+
+def recommendations_from_strings(
+    strings: List[str],
+    index_of_source_string: int,
+    model="text-embedding-3-small",
+) -> List[int]:
+    """Return nearest neighbors of a given string."""
+
+    # get embeddings for all strings
+    embeddings = [embedding_from_string(string, model=model) for string in strings]
+
+    # get the embedding of the source string
+    query_embedding = embeddings[index_of_source_string]
+
+    # get distances between the source embedding and other embeddings (function from embeddings_utils.py)
+    distances = distances_from_embeddings(query_embedding, embeddings, distance_metric="cosine")
+
+    # get indices of nearest neighbors (function from embeddings_utils.py)
+    indices_of_nearest_neighbors = indices_of_nearest_neighbors_from_distances(distances)
+    return indices_of_nearest_neighbors
+2Dでのデータ視覚化
+
+埋め込みのサイズは、基礎となるモデルの複雑さに応じて変化します。この高次元データを可視化するために、t-SNEアルゴリズムを用いてデータを2次元に変換します。
+
+個々のレビューは、レビュー者が付けた星評価に基づいて色分けされます。
+
+1つ星：赤
+2つ星：濃いオレンジ
+3つ星：ゴールド
+4つ星：ターコイズ
+5つ星：濃い緑
+t-SNEを使用して言語で視覚化されたAmazonの評価
+視覚化によっておよそ 3 つのクラスターが生成されたようですが、そのうちの 1 つには主に否定的なレビューが含まれています。
+
+import pandas as pd
+from sklearn.manifold import TSNE
+import matplotlib.pyplot as plt
+import matplotlib
+
+df = pd.read_csv('output/embedded_1k_reviews.csv')
+matrix = df.ada_embedding.apply(eval).to_list()
+
+# Create a t-SNE model and transform the data
+tsne = TSNE(n_components=2, perplexity=15, random_state=42, init='random', learning_rate=200)
+vis_dims = tsne.fit_transform(matrix)
+
+colors = ["red", "darkorange", "gold", "turquiose", "darkgreen"]
+x = [x for x,y in vis_dims]
+y = [y for x,y in vis_dims]
+color_indices = df.Score.values - 1
+
+colormap = matplotlib.colors.ListedColormap(colors)
+plt.scatter(x, y, c=color_indices, cmap=colormap, alpha=0.3)
+plt.title("Amazon ratings visualized in language using t-SNE")
+MLアルゴリズムのテキスト特徴エンコーダとしての埋め込み
+
+埋め込みは、機械学習モデルにおいて、一般的なフリーテキスト特徴量エンコーダとして使用できます。埋め込みを組み込むことで、関連する入力の一部がフリーテキストである場合、あらゆる機械学習モデルのパフォーマンスが向上します。埋め込みは、MLモデルにおいてカテゴリ特徴量エンコーダとしても使用できます。これは、職名のようにカテゴリ変数の名前が意味を持ち、数が多い場合に最も効果的です。このタスクでは、一般的に類似性埋め込みの方が検索埋め込みよりも優れたパフォーマンスを発揮します。
+
+埋め込み表現は一般的に非常にリッチで情報密度が高いことが観察されました。例えば、SVDやPCAを用いて入力の次元を10%でも削減すると、特定のタスクにおいては下流のパフォーマンスが低下する傾向があります。
+
+このコードは、データをトレーニング セットとテスト セットに分割します。これらは、回帰と分類という次の 2 つのユース ケースで使用されます。
+
+from sklearn.model_selection import train_test_split
+
+X_train, X_test, y_train, y_test = train_test_split(
+    list(df.ada_embedding.values),
+    df.Score,
+    test_size = 0.2,
+    random_state=42
+)
+埋め込み特徴を用いた回帰
+埋め込みは、数値を予測する優れた方法を提供します。この例では、レビューのテキストに基づいて、レビュー者の星評価を予測します。埋め込みに含まれる意味情報は高いため、レビュー数が非常に少ない場合でも、予測精度は良好です。
+
+スコアは1から5までの連続変数であると仮定し、アルゴリズムが任意の浮動小数点値を予測できるようにします。MLアルゴリズムは予測値と真のスコアの差を最小化し、平均絶対誤差0.39を達成します。これは、平均すると予測値の誤差が星の半分未満であることを意味します。
+
+from sklearn.ensemble import RandomForestRegressor
+
+rfr = RandomForestRegressor(n_estimators=100)
+rfr.fit(X_train, y_train)
+preds = rfr.predict(X_test)
+埋め込み特徴を用いた分類
+
+今回は、アルゴリズムに 1 から 5 までの値を予測させるのではなく、レビューの星の数を正確に 1 から 5 までの 5 つのバケットに分類してみます。
+
+トレーニング後、モデルは、より極端な感情表現のため、より微妙なニュアンスのあるレビュー (2～4 つ星) よりも 1 つ星と 5 つ星のレビューをはるかに正確に予測することを学習します。
+
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import classification_report, accuracy_score
+
+clf = RandomForestClassifier(n_estimators=100)
+clf.fit(X_train, y_train)
+preds = clf.predict(X_test)
+ゼロショット分類
+
+埋め込みは、ラベル付き学習データなしでもゼロショット分類に使用できます。各クラスには、クラス名またはクラスの簡単な説明を埋め込みます。新しいテキストをゼロショット分類するには、その埋め込みをすべてのクラスの埋め込みと比較し、最も類似度の高いクラスを予測します。
+
+from openai.embeddings_utils import cosine_similarity, get_embedding
+
+df= df[df.Score!=3]
+df['sentiment'] = df.Score.replace({1:'negative', 2:'negative', 4:'positive', 5:'positive'})
+
+labels = ['negative', 'positive']
+label_embeddings = [get_embedding(label, model=model) for label in labels]
+
+def label_score(review_embedding, label_embeddings):
+    return cosine_similarity(review_embedding, label_embeddings[1]) - cosine_similarity(review_embedding, label_embeddings[0])
+
+prediction = 'positive' if label_score('Sample Review', label_embeddings) > 0 else 'negative'
+コールドスタート推奨のためのユーザーと製品の埋め込みを取得する
+
+ユーザーの埋め込みは、すべてのレビューを平均化することで取得できます。同様に、製品の埋め込みは、その製品に関するすべてのレビューを平均化することで取得できます。このアプローチの有用性を示すために、ユーザーごとおよび製品ごとにより多くのレビューをカバーできるよう、5万件のレビューのサブセットを使用します。
+
+これらの埋め込みの有用性を別のテストセットで評価し、ユーザーと製品の埋め込みの類似度を評価の関数としてプロットしました。興味深いことに、このアプローチを用いることで、ユーザーが製品を受け取る前であっても、ランダムな予測よりも正確に、ユーザーが製品を気に入るかどうかを予測できます。
+
+スコア別にグループ化された箱ひげ図
+user_embeddings = df.groupby('UserId').ada_embedding.apply(np.mean)
+prod_embeddings = df.groupby('ProductId').ada_embedding.apply(np.mean)
+クラスタリング
+
+クラスタリングは、大量のテキストデータを理解する方法の一つです。埋め込みは、各テキストの意味的に意味のあるベクトル表現を提供するため、このタスクに役立ちます。したがって、教師なし学習によって、クラスタリングはデータセット内の隠れたグループ分けを明らかにすることができます。
+
+この例では、ドッグフードに重点を置いたクラスターが 1 つ、否定的なレビューに重点を置いたクラスターが 1 つ、肯定的なレビューに重点を置いたクラスターが 2 つあります。
+
+t-SNEを使用して言語2Dで視覚化された識別されたクラスター
+import numpy as np
+from sklearn.cluster import KMeans
+
+matrix = np.vstack(df.ada_embedding.values)
+n_clusters = 4
+
+kmeans = KMeans(n_clusters = n_clusters, init='k-means++', random_state=42)
+kmeans.fit(matrix)
+df['Cluster'] = kmeans.labels_
+よくある質問
+文字列を埋め込む前に、その文字列に含まれるトークンの数を確認するにはどうすればよいでしょうか?
+Pythonでは、OpenAIのトークナイザーを使って文字列をトークンに分割することができます。
+tiktoken
+。
+
+コード例:
+
+import tiktoken
+
+def num_tokens_from_string(string: str, encoding_name: str) -> int:
+    """Returns the number of tokens in a text string."""
+    encoding = tiktoken.get_encoding(encoding_name)
+    num_tokens = len(encoding.encode(string))
+    return num_tokens
+
+num_tokens_from_string("tiktoken is great!", "cl100k_base")
+のような第 3 世代の埋め込みモデルの場合はtext-embedding-3-small、cl100k_baseエンコーディングを使用します。
+
+詳細とサンプルコードはOpenAI Cookbookガイドに記載されています。
+ティックトックでトークンを数える方法
+。
+
+K 最も近い埋め込みベクトルをすばやく取得するにはどうすればよいですか?
+多数のベクトルを高速に検索するには、ベクトルデータベースの使用をお勧めします。ベクトルデータベースとOpenAI APIの使用例については、こちらをご覧ください。
+私たちのクックブック
+GitHub で。
+
+どの距離関数を使用すればよいですか?
+おすすめ
+コサイン類似度
+距離関数の選択は通常、それほど重要ではありません。
+
+OpenAI の埋め込みは長さ 1 に正規化されます。つまり、次のようになります。
+
+コサイン類似度はドット積を使うと少し速く計算できる
+コサイン類似度とユークリッド距離は同一のランキングとなる。
+埋め込みをオンラインで共有できますか?
+はい、埋め込みの場合も含め、当社のモデルからの入力と出力はお客様の責任となります。お客様は、当社のAPIに入力するコンテンツが適用法または当社の利用規約に違反しないことを保証する責任を負います。
+利用規約
+。
+
+V3 埋め込みモデルは最近のイベントを認識しますか?
+いいえ、text-embedding-3-largeモデルtext-embedding-3-smallには 2021 年 9 月以降に発生したイベントに関する情報がありません。これは通常、テキスト生成モデルの場合ほど大きな制限にはなりませんが、特定のエッジケースではパフォーマンスが低下する可能性があります。
+
+概要
+モデル
+ユースケース
+よくある質問

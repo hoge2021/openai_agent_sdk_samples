@@ -1,0 +1,285 @@
+{
+  "traces": [
+    {
+      "event": "start",
+      "trace_id": "trace_75797b55550b45228fd5bf2bdf536557",
+      "workflow_name": "Agent workflow",
+      "group_id": null,
+      "timestamp": "2025-08-28T15:56:42.252144"
+    },
+    {
+      "event": "end",
+      "trace_id": "trace_75797b55550b45228fd5bf2bdf536557",
+      "workflow_name": "Agent workflow",
+      "timestamp": "2025-08-28T15:56:48.470345"
+    },
+    {
+      "event": "start",
+      "trace_id": "trace_612240a44bb54fd59affc145b5d05fa5",
+      "workflow_name": "Weather Analysis Workflow",
+      "group_id": "session_001",
+      "timestamp": "2025-08-28T15:56:48.470802"
+    },
+    {
+      "event": "end",
+      "trace_id": "trace_612240a44bb54fd59affc145b5d05fa5",
+      "workflow_name": "Weather Analysis Workflow",
+      "timestamp": "2025-08-28T15:57:08.697518"
+    },
+    {
+      "event": "start",
+      "trace_id": "trace_65866cfe25504868baf8ee49849dfc45",
+      "workflow_name": "Agent Handoff Workflow",
+      "group_id": null,
+      "timestamp": "2025-08-28T15:57:08.698226"
+    },
+    {
+      "event": "end",
+      "trace_id": "trace_65866cfe25504868baf8ee49849dfc45",
+      "workflow_name": "Agent Handoff Workflow",
+      "timestamp": "2025-08-28T15:57:08.999512"
+    }
+  ],
+  "spans": [
+    {
+      "event": "start",
+      "span_id": "span_e137eb43a6354898b65127b4",
+      "trace_id": "trace_75797b55550b45228fd5bf2bdf536557",
+      "timestamp": "2025-08-28T15:56:42.252597"
+    },
+    {
+      "event": "start",
+      "span_id": "span_0e54fefde8884e388131dde7",
+      "trace_id": "trace_75797b55550b45228fd5bf2bdf536557",
+      "timestamp": "2025-08-28T15:56:42.286623"
+    },
+    {
+      "event": "end",
+      "span_id": "span_0e54fefde8884e388131dde7",
+      "trace_id": "trace_75797b55550b45228fd5bf2bdf536557",
+      "timestamp": "2025-08-28T15:56:45.972208"
+    },
+    {
+      "event": "start",
+      "span_id": "span_79b5aad9637a42538b9ce64d",
+      "trace_id": "trace_75797b55550b45228fd5bf2bdf536557",
+      "timestamp": "2025-08-28T15:56:45.972558"
+    },
+    {
+      "event": "start",
+      "span_id": "span_9e77fa3d4631454cbab03cf5",
+      "trace_id": "trace_75797b55550b45228fd5bf2bdf536557",
+      "timestamp": "2025-08-28T15:56:45.972625"
+    },
+    {
+      "event": "start",
+      "span_id": "span_de10553e0b594acabdf72e69",
+      "trace_id": "trace_75797b55550b45228fd5bf2bdf536557",
+      "timestamp": "2025-08-28T15:56:45.972755"
+    },
+    {
+      "event": "start",
+      "span_id": "span_aef744a1de314f79b7a79514",
+      "trace_id": "trace_75797b55550b45228fd5bf2bdf536557",
+      "timestamp": "2025-08-28T15:56:45.972863"
+    },
+    {
+      "event": "end",
+      "span_id": "span_aef744a1de314f79b7a79514",
+      "trace_id": "trace_75797b55550b45228fd5bf2bdf536557",
+      "timestamp": "2025-08-28T15:56:45.972907"
+    },
+    {
+      "event": "end",
+      "span_id": "span_9e77fa3d4631454cbab03cf5",
+      "trace_id": "trace_75797b55550b45228fd5bf2bdf536557",
+      "timestamp": "2025-08-28T15:56:45.972993"
+    },
+    {
+      "event": "end",
+      "span_id": "span_de10553e0b594acabdf72e69",
+      "trace_id": "trace_75797b55550b45228fd5bf2bdf536557",
+      "timestamp": "2025-08-28T15:56:46.073370"
+    },
+    {
+      "event": "end",
+      "span_id": "span_79b5aad9637a42538b9ce64d",
+      "trace_id": "trace_75797b55550b45228fd5bf2bdf536557",
+      "timestamp": "2025-08-28T15:56:46.073490"
+    },
+    {
+      "event": "start",
+      "span_id": "span_d81d62afc75941008aabcf58",
+      "trace_id": "trace_75797b55550b45228fd5bf2bdf536557",
+      "timestamp": "2025-08-28T15:56:46.073912"
+    },
+    {
+      "event": "end",
+      "span_id": "span_d81d62afc75941008aabcf58",
+      "trace_id": "trace_75797b55550b45228fd5bf2bdf536557",
+      "timestamp": "2025-08-28T15:56:48.470074"
+    },
+    {
+      "event": "end",
+      "span_id": "span_e137eb43a6354898b65127b4",
+      "trace_id": "trace_75797b55550b45228fd5bf2bdf536557",
+      "timestamp": "2025-08-28T15:56:48.470323"
+    },
+    {
+      "event": "start",
+      "span_id": "span_b4812b088c054eb88bc13971",
+      "trace_id": "trace_612240a44bb54fd59affc145b5d05fa5",
+      "timestamp": "2025-08-28T15:56:48.471028"
+    },
+    {
+      "event": "start",
+      "span_id": "span_88872d66f6e24deea7acafc8",
+      "trace_id": "trace_612240a44bb54fd59affc145b5d05fa5",
+      "timestamp": "2025-08-28T15:56:48.471261"
+    },
+    {
+      "event": "end",
+      "span_id": "span_88872d66f6e24deea7acafc8",
+      "trace_id": "trace_612240a44bb54fd59affc145b5d05fa5",
+      "timestamp": "2025-08-28T15:56:49.639702"
+    },
+    {
+      "event": "start",
+      "span_id": "span_053dc73932f44fa0bc1a48d9",
+      "trace_id": "trace_612240a44bb54fd59affc145b5d05fa5",
+      "timestamp": "2025-08-28T15:56:49.639851"
+    },
+    {
+      "event": "start",
+      "span_id": "span_40242a67bb6040ea98c0be50",
+      "trace_id": "trace_612240a44bb54fd59affc145b5d05fa5",
+      "timestamp": "2025-08-28T15:56:49.639974"
+    },
+    {
+      "event": "end",
+      "span_id": "span_40242a67bb6040ea98c0be50",
+      "trace_id": "trace_612240a44bb54fd59affc145b5d05fa5",
+      "timestamp": "2025-08-28T15:56:49.740336"
+    },
+    {
+      "event": "end",
+      "span_id": "span_053dc73932f44fa0bc1a48d9",
+      "trace_id": "trace_612240a44bb54fd59affc145b5d05fa5",
+      "timestamp": "2025-08-28T15:56:49.740437"
+    },
+    {
+      "event": "start",
+      "span_id": "span_adbbf17edc25402f930c6608",
+      "trace_id": "trace_612240a44bb54fd59affc145b5d05fa5",
+      "timestamp": "2025-08-28T15:56:49.740718"
+    },
+    {
+      "event": "end",
+      "span_id": "span_adbbf17edc25402f930c6608",
+      "trace_id": "trace_612240a44bb54fd59affc145b5d05fa5",
+      "timestamp": "2025-08-28T15:56:52.501631"
+    },
+    {
+      "event": "end",
+      "span_id": "span_b4812b088c054eb88bc13971",
+      "trace_id": "trace_612240a44bb54fd59affc145b5d05fa5",
+      "timestamp": "2025-08-28T15:56:52.501855"
+    },
+    {
+      "event": "start",
+      "span_id": "span_09c11a80b07b42d2a8235478",
+      "trace_id": "trace_612240a44bb54fd59affc145b5d05fa5",
+      "timestamp": "2025-08-28T15:56:52.501939"
+    },
+    {
+      "event": "end",
+      "span_id": "span_09c11a80b07b42d2a8235478",
+      "trace_id": "trace_612240a44bb54fd59affc145b5d05fa5",
+      "timestamp": "2025-08-28T15:56:52.602344"
+    },
+    {
+      "event": "start",
+      "span_id": "span_dbf6fd49fbea4ca3bb63d318",
+      "trace_id": "trace_612240a44bb54fd59affc145b5d05fa5",
+      "timestamp": "2025-08-28T15:56:52.602580"
+    },
+    {
+      "event": "start",
+      "span_id": "span_910cd2bf79104f49860e6ff9",
+      "trace_id": "trace_612240a44bb54fd59affc145b5d05fa5",
+      "timestamp": "2025-08-28T15:56:52.602858"
+    },
+    {
+      "event": "end",
+      "span_id": "span_910cd2bf79104f49860e6ff9",
+      "trace_id": "trace_612240a44bb54fd59affc145b5d05fa5",
+      "timestamp": "2025-08-28T15:57:06.301510"
+    },
+    {
+      "event": "start",
+      "span_id": "span_ac7a13ca506c480ab612c3e3",
+      "trace_id": "trace_612240a44bb54fd59affc145b5d05fa5",
+      "timestamp": "2025-08-28T15:57:06.301662"
+    },
+    {
+      "event": "start",
+      "span_id": "span_00aab2b7a69c42a4bb504a91",
+      "trace_id": "trace_612240a44bb54fd59affc145b5d05fa5",
+      "timestamp": "2025-08-28T15:57:06.301775"
+    },
+    {
+      "event": "end",
+      "span_id": "span_00aab2b7a69c42a4bb504a91",
+      "trace_id": "trace_612240a44bb54fd59affc145b5d05fa5",
+      "timestamp": "2025-08-28T15:57:06.502259"
+    },
+    {
+      "event": "end",
+      "span_id": "span_ac7a13ca506c480ab612c3e3",
+      "trace_id": "trace_612240a44bb54fd59affc145b5d05fa5",
+      "timestamp": "2025-08-28T15:57:06.502388"
+    },
+    {
+      "event": "start",
+      "span_id": "span_f2e1d67e9b4246d4a0f17920",
+      "trace_id": "trace_612240a44bb54fd59affc145b5d05fa5",
+      "timestamp": "2025-08-28T15:57:06.502683"
+    },
+    {
+      "event": "end",
+      "span_id": "span_f2e1d67e9b4246d4a0f17920",
+      "trace_id": "trace_612240a44bb54fd59affc145b5d05fa5",
+      "timestamp": "2025-08-28T15:57:08.697258"
+    },
+    {
+      "event": "end",
+      "span_id": "span_dbf6fd49fbea4ca3bb63d318",
+      "trace_id": "trace_612240a44bb54fd59affc145b5d05fa5",
+      "timestamp": "2025-08-28T15:57:08.697486"
+    },
+    {
+      "event": "start",
+      "span_id": "span_32c914ba77c94ac7b4d86375",
+      "trace_id": "trace_65866cfe25504868baf8ee49849dfc45",
+      "timestamp": "2025-08-28T15:57:08.698294"
+    },
+    {
+      "event": "end",
+      "span_id": "span_32c914ba77c94ac7b4d86375",
+      "trace_id": "trace_65866cfe25504868baf8ee49849dfc45",
+      "timestamp": "2025-08-28T15:57:08.798753"
+    },
+    {
+      "event": "start",
+      "span_id": "span_a068086c65cf441681f3e4f2",
+      "trace_id": "trace_65866cfe25504868baf8ee49849dfc45",
+      "timestamp": "2025-08-28T15:57:08.798864"
+    },
+    {
+      "event": "end",
+      "span_id": "span_a068086c65cf441681f3e4f2",
+      "trace_id": "trace_65866cfe25504868baf8ee49849dfc45",
+      "timestamp": "2025-08-28T15:57:08.999495"
+    }
+  ]
+}

@@ -1,57 +1,33 @@
 // app/page.tsx
-import { Card, CardContent } from "@/components/ui/card"
+"use client"
 
-type Device = {
-  msn: string
-  supplier: string
-  destination: string
-}
-
-const devices: Device[] = [
-  { msn: "C8D-1234-0001", supplier: "株式会社ダミー", destination: "株式会社ダミー - 請求部" },
-  { msn: "C8D-1234-0002", supplier: "株式会社ダミー", destination: "株式会社ダミー - 請求部" },
-  { msn: "C8D-1234-0003", supplier: "株式会社ダミー", destination: "株式会社ダミー - 請求部" },
-  { msn: "C8D-1234-0004", supplier: "株式会社ダミー", destination: "株式会社ダミー - 請求部" },
-  { msn: "C8D-1234-0005", supplier: "株式会社ダミー", destination: "株式会社ダミー - 請求部" },
-  { msn: "C8D-1234-0006", supplier: "株式会社ダミー", destination: "株式会社ダミー - 請求部" },
-  { msn: "C8D-1234-0007", supplier: "株式会社ダミー", destination: "株式会社ダミー - 請求部" },
-  { msn: "C8D-1234-0008", supplier: "株式会社ダミー", destination: "株式会社ダミー - 請求部" },
-  { msn: "C8D-1234-0009", supplier: "株式会社ダミー", destination: "株式会社ダミー - 請求部" },
-  { msn: "C8D-1234-0010", supplier: "株式会社ダミー", destination: "株式会社ダミー - 請求部" },
-]
+import { useState } from "react"
 
 export default function Page() {
-  return (
-    <main className="p-6 space-y-6">
-      <Card className="p-4">
-        <h1 className="text-2xl font-bold mb-2">検出情報</h1>
-        <p className="text-gray-700">検査実施日: <span className="font-semibold">2025/9/12</span></p>
-        <p className="text-gray-700">レンタル品型番キャスト検出: <span className="text-red-600 font-bold">未検出</span></p>
-      </Card>
+  const [mailText, setMailText] = useState(`不足情報案内メール
 
-      <Card>
-        <CardContent>
-          <h2 className="text-xl font-bold mb-4">モバイル機器一覧</h2>
-          <table className="min-w-full border border-gray-300 rounded-lg">
-            <thead className="bg-gray-100">
-              <tr>
-                <th className="border px-4 py-2 text-left">MSN</th>
-                <th className="border px-4 py-2 text-left">製造者</th>
-                <th className="border px-4 py-2 text-left">設置先</th>
-              </tr>
-            </thead>
-            <tbody>
-              {devices.map((device, idx) => (
-                <tr key={idx} className="hover:bg-gray-50">
-                  <td className="border px-4 py-2">{device.msn}</td>
-                  <td className="border px-4 py-2">{device.supplier}</td>
-                  <td className="border px-4 py-2">{device.destination}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </CardContent>
-      </Card>
+お世話になっております。
+ソフトバンク株式会社の田中でございます。
+
+昨日、解約依頼のメールを確かに受領いたしました。
+恐れ入りますが、以下の情報が不足しておりましたため、改めてご教示いただけますでしょうか。
+
+【不足情報】
+- レンタル返却キット送付先住所
+
+お手数をおかけいたしますが、ご確認のほどよろしくお願い申し上げます。
+`)
+
+  return (
+    <main className="flex min-h-screen flex-col items-center justify-center p-6 bg-gray-50">
+      <div className="w-full max-w-3xl">
+        <h1 className="text-2xl font-bold mb-4">不足情報案内メール</h1>
+        <textarea
+          value={mailText}
+          onChange={(e) => setMailText(e.target.value)}
+          className="w-full h-96 border rounded-lg p-4 text-gray-800 bg-white shadow-sm resize-none overflow-y-scroll"
+        />
+      </div>
     </main>
   )
 }

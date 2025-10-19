@@ -54,11 +54,14 @@ openspec-archive.prompt.md　　　完了したら打つ。
 
 ■初期設定したら以下の下準備を行う。
 
+serenaのmcpサーバを用いて、プロジェクト(コードベース)の全貌をオンボーディングしてください。
+
 1. Populate your project context:
 訳、既存プロジェクトの概要や技術スタックの情報を、教えてください。
 ※サンプルプロンプト
-   "Please read openspec/project.md and help me fill it out
-    with details about my project, tech stack, and conventions"
+Please read openspec/project.md and help me fill it out with details about my project, tech stack, and conventions
+補足:以下のファイルを参照されたし。/home/hoge/34_react_rensyu/nextjs-fastapi-template/openspec/onboarding_summary.md
+
 ※openspec/project.mdに記述してください。
 ※おそらくserenaのMCPサーバからsavanを使ったほうが良いと思われ。
 
@@ -69,8 +72,14 @@ openspec-archive.prompt.md　　　完了したら打つ。
     OpenSpec change proposal for this feature"
 ※プロジェクト/openspec/changes/配下に
 ※サンプル編集例
-   "I want to リファクタリング. Please create an
-    OpenSpec change proposal for this feature"
+I want to add [YOUR FEATURE HERE]. Please create an
+OpenSpec change proposal for this feature
+
+####[YOUR FEATURE HERE]
+拡張子が各tsx,ts,pyのファイルに対して、以下の対応をして欲しい。
+1.ソースコードの随所に日本語のコメントを挿入して欲しい。(多ければ多いほど嬉しい)
+2.また英語のコメントは日本語に翻訳して欲しい。
+3.非常に重要:変更提案書は日本語で出力して欲しい。
 
 3. Learn the OpenSpec workflow:
 訳: OpenSpecワークフローを学ぶための、説明してください。
@@ -79,5 +88,13 @@ openspec-archive.prompt.md　　　完了したら打つ。
 
 ※その情報を参考に後続の作業をすすめてください。
 
+
+■Clineの操作
+・savanモードのプロンプトをグローバルに乗せる。
+・使用するLLMをgithub copilot＆chatgpt5-miniに変更する
+yoloモードをEnableにする。
+
+
+/home/hoge/34_react_rensyu/nextjs-fastapi-template/.github/prompts/openspec-apply.prompt.mdを実行せよ。
 
 

@@ -1,154 +1,540 @@
-上記がワークフロー全体図です。以下、このワークフローに基づいた実行結果を出力します。
+## Step 2: 戦略的ワークフロー（Mermaid図）---
+
+## Step 3: 手順書（完成版）
 
 ---
 
-## CDK差分（ブランチA→B）をTerraformに反映する完全実行ガイド
+# 📘 CDK差分をTerraformに反映する手順書
 
-### 根本的な問題構造の整理
-
-この状況を正確に捉えると、こういうことになる。
-
-「CDKブランチA」は既にTerraformに変換済みで、別AWSアカウントにデプロイ済み。つまり現在のTerraformコードとtfstateは「ブランチAの世界」を表現している。一方「CDKブランチB」はAの上に積み重なった更新であり、この**差分だけ**を正確にTerraformへ反映する必要がある。ここで最も危険なのは、CDKの高レベル抽象（L2/L3 Construct）が裏で生成するリソースの変化を見落とすことだ。CDKのコード上は数行の変更でも、CloudFormation（CFn）レベルでは数十リソースが変わっている可能性がある。
-
-### 推奨戦略：「CFn差分ガイド方式」
-
-3つの方式を比較検討した結果、最も安全かつ正確なのは以下の方式だ。
-
-**差分逐次変換方式**（CDKのgit diffだけを見てTerraformを書き換える）は、CDK抽象が隠す暗黙的リソースを見落とすリスクが高い。**全面再生成方式**（ブランチBから丸ごとTerraformを再生成してマージ）は正確だが、既存のTerraform構造やモジュール設計を破壊するリスクがある。
-
-推奨するのは**CFn差分ガイド方式**で、CDKのコードdiffで「意図」を把握し、CFnテンプレートのdiffで「実際のリソース変更」を確認し、その両方をガイドにしてTerraformを修正する三層検証アプローチだ。
+**対象読者:** Terraform・Claude Code初心者の方
+**環境:** Windows 11 / PowerShell
+**所要時間の目安:** 2〜4時間（差分の規模による）
 
 ---
 
-### 具体的な実行手順
-
-#### ステップ1：CDKコードレベルの差分を取得し、変更の「意図」を把握する
-
-```bash
-# CDKリポジトリで差分を取得
-cd /path/to/cdk-repo
-git diff branchA..branchB -- lib/ bin/ > cdk_code_diff.patch
-
-# 変更ファイル一覧（構造把握用）
-git diff --stat branchA..branchB -- lib/ bin/
-```
-
-この段階では「何を変えたかったのか」というビジネス意図・設計意図を読み取ることに集中する。CDKのL2 Constructが変わったのか、新しいスタックが追加されたのか、パラメータが変わっただけなのか。Claude Codeに渡す際も、まずこのdiffを読ませて変更意図のサマリーを作らせるとよい。
-
-#### ステップ2：CloudFormationテンプレートの差分で「実リソース変更」を特定する
-
-```bash
-# ブランチAでCFnテンプレートを生成
-git checkout branchA
-cdk synth --output=cdk.out.branchA
-
-# ブランチBでCFnテンプレートを生成
-git checkout branchB
-cdk synth --output=cdk.out.branchB
-
-# 各スタックのテンプレートを比較
-diff -r cdk.out.branchA/ cdk.out.branchB/ > cfn_diff.txt
-```
-
-CFnテンプレートはJSON/YAMLなので、より精密に比較したい場合は `cfn-diff` ツールや、単純にjqで正規化してからdiffを取る方法もある。
-
-```bash
-# JSON正規化して比較（スタックごとに実行）
-cat cdk.out.branchA/MyStack.template.json | jq -S . > a_normalized.json
-cat cdk.out.branchB/MyStack.template.json | jq -S . > b_normalized.json
-diff a_normalized.json b_normalized.json
-```
-
-**ここが最重要ステップ。** CFnテンプレートの差分が「真実」であり、Terraformに反映すべき変更の正確なリストになる。変更を以下の3カテゴリに分類する。
-
-| カテゴリ | 例 | Terraformでの対応 |
-|---|---|---|
-| リソース追加 | 新しいLambda、SQSキューなど | 新規 `resource` ブロック追加 |
-| リソース変更 | セキュリティグループのルール変更、Lambda設定変更 | 既存ブロックの属性修正 |
-| リソース削除 | 不要になったリソース | `resource` ブロック削除 + `terraform state rm`（必要に応じて） |
-
-#### ステップ3：変更単位の依存関係を整理し、適用順序を決定する
-
-分類した変更を依存関係に従って並べる。たとえば「新しいIAMロール → 新しいLambda → 新しいAPI Gatewayルート」のように、Terraformの `depends_on` や参照関係を意識した順序で作業する。
-
-Claude Codeへの指示としては、以下のようなプロンプト構造が有効だ。
+## 🗺️ 全体の流れ（これを頭に入れてから作業してください）
 
 ```
-以下はCDKブランチA→Bの差分です。
-
-【CDKコードdiff】
-{cdk_code_diff.patchの内容}
-
-【CloudFormationテンプレートdiff】
-{cfn_diff.txtの内容}
-
-【現在のTerraformコード】
-{既存のTerraformディレクトリ構造と主要ファイル}
-
-上記に基づき、以下を実行してください：
-1. CFn差分から、追加/変更/削除されたリソースを一覧化
-2. 各リソースの依存関係を整理
-3. 既存Terraformのモジュール構造に合わせて、変更を反映
-4. 変更ごとに terraform plan で差分を確認できるよう、段階的に適用
+ブランチA（元のCDK）
+        ↓
+ブランチB（更新後のCDK）との差分を確認
+        ↓
+差分を3種類に仕分け
+ ├─ ① CDKインフラ定義の変更  → Terraform HCLを書き換える
+ ├─ ② Lambdaの関数コードの変更 → ソースファイルを差し替える
+ └─ ③ Lambdaレイヤーの変更   → レイヤーのソースを差し替える
+        ↓
+terraform plan で変更内容を確認
+        ↓
+terraform apply でAWSに反映
+        ↓
+動作確認・完了
 ```
-
-#### ステップ4：Terraform変更の実装と段階的検証
-
-ここが実作業の核心部分だ。以下の原則を守る。
-
-**原則1：一度に全部変えない。** 変更をグループ単位（たとえばスタック単位、機能単位）で分けて、それぞれ `terraform plan` で検証してから次に進む。
-
-**原則2：planの `destroy` に注目する。** `terraform plan` で意図しない `destroy` や `replace`（`forces replacement`）が出た場合、それはリソース再作成を意味する。本番データが消えるリスクがあるため、必ず立ち止まって確認する。
-
-**原則3：既存リソースのimportが必要な場合がある。** CDKのブランチBで追加されたリソースが、既にAWS上に別の経路で存在している場合（手動作成など）、`terraform import` でstateに取り込む必要がある。ただし今回は「別アカウントにTerraformでデプロイ」した構成なので、基本的にはリソース追加＝新規作成になるはずだ。
-
-**原則4：terraform MCPで最新プロバイダー仕様を確認する。** AWS Provider v5ではS3バケットの設定が分離されているなど、CDKのCFnテンプレートとTerraformのリソース定義が1対1対応しないケースがある。変換前に `hashicorp/terraform-mcp-server` で現行の引数仕様を確認すること。
-
-#### ステップ5：検証とロールバック準備
-
-```bash
-# 全変更適用前に、現在のstateをバックアップ
-terraform state pull > terraform.tfstate.backup_$(date +%Y%m%d)
-
-# plan実行（変更グループごと）
-terraform plan -var-file=env/prod.tfvars -out=plan.out
-
-# planの内容を人間が確認した上でapply
-terraform apply plan.out
-```
-
-万が一問題が起きた場合のロールバック手順も事前に決めておく。stateバックアップからの復元と、Git上のTerraformコードのrevertの両方が必要になる。
 
 ---
 
-### 落とし穴と対策（プレモーテム分析）
+## 📋 第0章：作業前の準備確認
 
-**落とし穴1：CDKのContext値やFeature Flagの差異。** CDKは `cdk.json` の `context` や Feature Flagによって生成されるCFnが大きく変わる。ブランチA→Bで `cdk.json` も変わっていないか必ず確認する。見落とすとCFn差分の前提が崩れる。
+作業を始める前に、以下がすべて揃っているか確認してください。
 
-**落とし穴2：CDKのL2 Constructが暗黙的に生成するリソースの見落とし。** たとえば `Function` Constructにイベントソースを追加すると、裏でIAMポリシー、EventSourceMapping、LogGroupなどが自動生成される。CDKコードdiffだけ見ると1行の追加だが、CFnでは5〜6リソースが増えている。だからこそCFn差分を「真実」として使う。
+### 0-1. 必要なツールの確認
 
-**落とし穴3：Terraformの `lifecycle` による意図しない挙動。** 既存Terraformに `ignore_changes` を設定しているリソースがある場合、plan上は差分なしと出るが実際のAWSリソースは古いままになる。変更対象リソースの `lifecycle` ブロックを確認すること。
+PowerShellを開いて、以下を1行ずつ実行してください。
 
-**落とし穴4：CDKのOutputやExportの変更。** CDKスタック間のクロススタック参照が変わっている場合、Terraformでは `data` ソースや変数の参照構造を修正する必要がある。
+```powershell
+# Gitが使えるか確認
+git --version
+# 例: git version 2.xx.x が表示されればOK
+
+# Terraformが使えるか確認
+terraform --version
+# 例: Terraform v1.x.x が表示されればOK
+
+# Claude Codeが使えるか確認
+claude --version
+# 例: バージョン番号が表示されればOK
+
+# AWS CLIが使えるか確認
+aws --version
+# 例: aws-cli/2.x.x が表示されればOK
+```
+
+> ⚠️ **もしエラーが出たら:** インストールされていないツールがあります。先にインストールを完了させてから戻ってきてください。
+
+### 0-2. AWSの認証情報の確認
+
+```powershell
+# AWSに正しくログインできているか確認（SSOを使っている場合）
+aws sso login --profile <あなたのプロファイル名>
+
+# ログインできているか確認
+aws sts get-caller-identity --profile <あなたのプロファイル名>
+# 「Account」「UserId」が表示されればOK
+```
+
+### 0-3. 作業フォルダの確認
+
+今回の作業で使うフォルダ構成をあらかじめ把握しておきます。
+
+```powershell
+# CDKリポジトリのフォルダに移動（パスは自分の環境に合わせて変更）
+cd C:\Users\<あなたのユーザー名>\<CDKのリポジトリフォルダ>
+
+# Terraformのフォルダに移動（パスは自分の環境に合わせて変更）
+cd C:\Users\<あなたのユーザー名>\<TerraformのフォルダのパスF>
+```
 
 ---
 
-### Claude Codeでの実践的なワークフロー
+## 📋 第1章：差分を確認する
 
-実際にClaude Codeで作業する際の推奨フローは次のとおり。
+まず「ブランチAとブランチBで何が変わったのか」を正確に把握します。
 
-**第一段階：差分分析フェーズ。** CDKリポジトリをクローンし、上記のステップ1〜2をClaude Codeに実行させる。CFn差分の解析結果をmarkdownファイルとして出力させ、変更リソース一覧表を作る。この段階ではTerraformには一切触れない。
+### 1-1. CDKリポジトリへ移動してブランチを準備する
 
-**第二段階：変換設計フェーズ。** 変更リソース一覧をもとに、既存Terraformのどのファイル・モジュールに変更を入れるかの設計書を作らせる。terraform MCPで最新の引数仕様も確認させる。設計書を人間がレビューする。
+```powershell
+# CDKリポジトリのフォルダへ移動
+cd C:\Users\<あなたのユーザー名>\<CDKのリポジトリフォルダ>
 
-**第三段階：実装フェーズ。** 設計書に基づいてTerraformコードを修正させる。変更グループごとに `terraform plan` を実行し、期待どおりの差分が出ているか確認する。`destroy` や `replace` が出たら必ず一旦停止。
+# リモートの最新情報を取得
+git fetch origin
 
-**第四段階：適用フェーズ。** planが問題なければ `terraform apply`。適用後に `terraform state list` でリソース一覧を確認し、期待どおりの状態になっているかを検証する。
+# 現在のブランチを確認（今どこにいるか分かります）
+git branch -a
+```
+
+### 1-2. 変更されたファイルの一覧を確認する
+
+```powershell
+# ブランチAとブランチBで変わったファイルの一覧を表示
+git diff origin/ブランチA origin/ブランチB --name-only
+```
+
+実行すると、以下のようにファイル名の一覧が表示されます。
+
+```
+lib/my-stack.ts               ← CDKインフラ定義ファイル
+src/lambda/handler.py         ← Lambda関数のコード
+layers/my-layer/requirements.txt  ← Lambdaレイヤーの定義
+```
+
+> 💡 `--name-only` は「ファイル名だけを表示する」オプションです。まずは何が変わったかを一覧で把握しましょう。
+
+### 1-3. 差分の詳細内容を確認する
+
+```powershell
+# 変更内容の詳細を表示（追加は「+」、削除は「-」で表示されます）
+git diff origin/ブランチA origin/ブランチB
+```
+
+> 💡 表示が長い場合は、`q` キーを押すと終了できます。
+
+### 1-4. 変更ファイルを3種類に仕分けるメモを作る
+
+確認した差分を、以下の3種類に分類してメモしておきます（後の作業で使います）。
+
+| 種類 | 特徴 | 例 |
+|------|------|----|
+| ① CDKインフラ定義 | `lib/` フォルダ内の `.ts` や `.py` ファイル | `lib/my-stack.ts` |
+| ② Lambda関数コード | `src/lambda/` などのハンドラーファイル | `handler.py`, `index.js` |
+| ③ Lambdaレイヤー | `layers/` フォルダ内のファイル | `requirements.txt`, `package.json` |
 
 ---
 
-### まとめ
+## 📋 第2章：Claude Codeで差分を分析する
 
-核心は「CDKのコードdiffだけを信じない」ということに尽きる。CDKの抽象層は便利だが、裏で生成されるリソースの全容はCFnテンプレートにしか現れない。だからCFnテンプレートのdiffを「真実のソース」として使い、それをガイドにTerraformを修正する。この三層検証（CDKコード→CFnテンプレート→Terraform plan）を守れば、差分の見落としを最小限に抑えられる。
+差分の内容をそのまま読み解くのは難しいため、Claude Codeに分析を依頼します。
 
-段階的に、検証しながら進めることが最大の安全策だ。一括変換の誘惑に負けず、変更グループごとにplan→確認→applyのサイクルを回してほしい。
+### 2-1. Claude Codeを起動する
+
+```powershell
+# CDKリポジトリのフォルダで Claude Code を起動
+cd C:\Users\<あなたのユーザー名>\<CDKのリポジトリフォルダ>
+claude
+```
+
+### 2-2. 差分ファイルをClaude Codeに渡して分析依頼する
+
+Claude Codeが起動したら、以下のプロンプトを貼り付けて送信します。
+
+```
+以下のコマンドを実行して、ブランチAとブランチBの差分を取得してください。
+そして、各変更がTerraformのどのリソース・どのファイルに影響するかを
+初心者にもわかるよう箇条書きで説明してください。
+
+git diff origin/ブランチA origin/ブランチB
+
+出力形式：
+- 変更ファイル名
+  - 何が変わったか（1〜2行で）
+  - Terraformで対応が必要な箇所（ファイル名と変更内容）
+  - 対応の優先度（高/中/低）
+```
+
+### 2-3. 分析結果を確認・保存する
+
+Claude Codeの出力を確認し、内容をテキストファイルに保存しておきます。
+
+```powershell
+# 分析結果を保存するファイルを作成（Claude Codeを一度終了してから実行）
+# Claude Code内で以下のようなコマンドも使えます
+# /save analysis_result.txt  （Claude Codeのsaveコマンドを使う場合）
+```
+
+> ✅ **確認ポイント:** Claude Codeの分析で「このCDKの変更は Terraform のどのファイルの何行目に影響するか」が明確になっていれば、次の章に進んでください。
+
+---
+
+## 📋 第3章：Terraformに反映する
+
+分析結果をもとに、実際にTerraformのコードを更新します。種類ごとに順番に対応します。
+
+---
+
+### 3-1. Lambda関数コードの更新（② に該当するファイル）
+
+Lambda関数のコード（Pythonなら `.py`、Node.jsなら `.js`/`.ts` ファイルなど）が変わった場合の対応です。
+
+#### ステップA: 変更されたコードを確認する
+
+```powershell
+# CDKリポジトリでブランチBに切り替えて、最新のコードを取得
+cd C:\Users\<あなたのユーザー名>\<CDKのリポジトリフォルダ>
+git checkout origin/ブランチB -- src/lambda/handler.py
+# ↑ 「src/lambda/handler.py」は実際のパスに変えてください
+```
+
+#### ステップB: TerraformのLambdaソースフォルダへコピーする
+
+```powershell
+# コピー元（CDKのコード）のパス例
+$source = "C:\Users\<あなたのユーザー名>\<CDKのリポジトリ>\src\lambda\handler.py"
+
+# コピー先（TerraformのLambdaソースフォルダ）のパス例
+$dest = "C:\Users\<あなたのユーザー名>\<Terraformフォルダ>\modules\lambda\src\"
+
+# コピー実行
+Copy-Item -Path $source -Destination $dest -Force
+
+# コピーされたか確認
+Get-ChildItem $dest
+```
+
+> 💡 **Terraformのフォルダ構成例:**
+> ```
+> terraform/
+>   ├─ modules/
+>   │   └─ lambda/
+>   │       └─ src/         ← ここにLambdaのコードを置く
+>   ├─ main.tf
+>   └─ variables.tf
+> ```
+
+> ⚠️ **注意:** Terraformの `aws_lambda_function` リソースで `source_code_hash` を使っている場合は、コードを差し替えると自動的に再デプロイされます。これが正しい動作です。
+
+---
+
+### 3-2. Lambdaレイヤーの更新（③ に該当するファイル）
+
+`requirements.txt` や `package.json` などのレイヤー定義ファイルが変わった場合の対応です。
+
+#### ステップA: ブランチBのレイヤーファイルを取得する
+
+```powershell
+# CDKリポジトリでブランチBのレイヤーファイルを取得
+cd C:\Users\<あなたのユーザー名>\<CDKのリポジトリフォルダ>
+git checkout origin/ブランチB -- layers/my-layer/requirements.txt
+# ↑ 「layers/my-layer/requirements.txt」は実際のパスに変えてください
+```
+
+#### ステップB: レイヤーをビルドする（Pythonの場合の例）
+
+```powershell
+# TerraformのLambdaレイヤーのビルドフォルダへ移動
+cd C:\Users\<あなたのユーザー名>\<Terraformフォルダ>\modules\lambda_layer\
+
+# 既存のビルド済みフォルダを削除（クリーンビルドのため）
+Remove-Item -Recurse -Force .\python\ -ErrorAction SilentlyContinue
+
+# 新しいrequirements.txtをコピー
+Copy-Item "C:\...\layers\my-layer\requirements.txt" .\ -Force
+
+# Dockerを使ってAmazon Linux互換でビルド（推奨）
+docker run --rm -v "${PWD}:/var/task" public.ecr.aws/sam/build-python3.12:latest `
+  pip install -r requirements.txt -t python/
+
+# もしDockerが使えない場合（Pythonバージョンが一致している場合のみ）
+pip install -r requirements.txt -t python/ --platform manylinux2014_x86_64 --only-binary :all:
+```
+
+> 💡 **なぜDockerを使うのか?**
+> AWSのLambdaはAmazon Linux上で動いています。Windowsで直接ビルドすると、ライブラリがLinuxと互換性のない形式でインストールされることがあります。Dockerを使うとLinux環境でビルドできるため安全です。
+
+#### ステップC: zipファイルにまとめる
+
+TerraformはLambdaレイヤーをzipファイルとしてアップロードします。
+
+```powershell
+# ビルドしたフォルダをzipに圧縮
+Compress-Archive -Path .\python\ -DestinationPath .\layer.zip -Force
+
+# zipが作成されたか確認
+Get-ChildItem .\layer.zip
+```
+
+> 💡 **Terraformのレイヤー定義がある場合、自動でzipを作成する設定になっていることもあります。**
+> Terraformの `aws_lambda_layer_version` リソースに `source_dir` が設定されていれば、`terraform apply` 時に自動でzip化されます。その場合このステップは不要です。Claude Codeに確認してもらいましょう。
+
+---
+
+### 3-3. CDKインフラ定義の変更をTerraform HCLに反映する（① に該当するファイル）
+
+これが最も重要かつ慎重な作業です。CDKのコードはTypeScript/Pythonで書かれていますが、TerraformはHCL（独自言語）で書かれています。Claude Codeに翻訳を依頼します。
+
+#### ステップA: 変更されたCDKファイルの差分をClaude Codeに見せる
+
+```powershell
+# TerraformのフォルダでClaude Codeを起動
+cd C:\Users\<あなたのユーザー名>\<Terraformフォルダ>
+claude
+```
+
+Claude Codeに以下のプロンプトを送信します。
+
+```
+以下の作業を順番にお願いします。
+
+1. まず、CDKリポジトリの以下のコマンドを実行して差分を確認してください:
+   cd C:\Users\<あなたのユーザー名>\<CDKのリポジトリフォルダ>
+   git diff origin/ブランチA origin/ブランチB -- lib/my-stack.ts
+
+2. 現在のTerraformフォルダの構成を確認してください:
+   Get-ChildItem -Recurse *.tf
+
+3. CDKの変更内容を分析して、Terraformのどのファイルをどのように変更すべきか教えてください。
+   変更案を提示する前に、必ず既存のTerraformコードの内容を確認してから提案してください。
+
+4. 私の確認を取った上で、Terraformファイルを実際に書き換えてください。
+```
+
+> ⚠️ **重要:** 「私の確認を取った上で」というフレーズを必ず含めてください。Claude Codeが自動で書き換えを始める前に、変更内容を確認する機会を設けるためです。
+
+#### ステップB: Claude Codeの提案内容を確認する
+
+Claude Codeが提案した内容を確認します。以下の点をチェックしてください。
+
+```
+チェックリスト:
+□ リソースタイプが正しいか（例: aws_lambda_function, aws_iam_role など）
+□ 既存のリソース名・変数名と整合しているか
+□ 環境変数（prod/staging）が正しく設定されているか
+□ 削除が必要なリソースはないか（CDKで削除されたものがあれば、Terraformからも削除が必要）
+```
+
+> 💡 **不安な場合は:** 「この変更で影響を受けるAWSリソースを全て列挙してください」とClaude Codeに追加で聞きましょう。
+
+#### ステップC: 承認してClaude Codeに実際の変更を依頼する
+
+内容を確認したら、Claude Codeに変更の実施を依頼します。
+
+```
+内容を確認しました。提案された変更をTerraformファイルに反映してください。
+変更後は diff を見せてください（git diff や 変更前後の比較）。
+```
+
+---
+
+## 📋 第4章：Terraformでデプロイする
+
+Terraformファイルの更新が完了したら、実際にAWSへ反映します。
+
+### 4-1. 構文チェック（文法エラーがないか確認）
+
+```powershell
+# TerraformフォルダでPowerShellを開く
+cd C:\Users\<あなたのユーザー名>\<Terraformフォルダ>
+
+# 構文チェック（エラーがなければ "Success!" と表示されます）
+terraform validate
+```
+
+> ⚠️ **エラーが出た場合:** エラーメッセージをコピーしてClaude Codeに貼り付けると修正方法を教えてくれます。
+
+### 4-2. terraform plan（変更内容のプレビュー）
+
+```powershell
+# まずstagingで確認する場合
+terraform plan -var-file="staging.tfvars"
+
+# 本番で確認する場合
+terraform plan -var-file="prod.tfvars"
+```
+
+実行すると以下のような出力が表示されます。意味を理解してから次のステップに進みましょう。
+
+```
+# aws_lambda_function.my_function will be updated in-place
+~ resource "aws_lambda_function" "my_function" {
+    ...
+    ~ source_code_hash = "xxxx" -> "yyyy"   ← コードが変わります
+  }
+
+# aws_lambda_layer_version.my_layer will be created
++ resource "aws_lambda_layer_version" "my_layer" {  ← 新しいバージョンが作られます
+    ...
+  }
+
+Plan: 1 to add, 1 to change, 0 to destroy.
+```
+
+| 記号 | 意味 | 安全性 |
+|------|------|--------|
+| `+` | 新しく作成される | 通常は安全 |
+| `~` | 既存のリソースを変更 | 内容をよく確認する |
+| `-` | 削除される | **必ず意図した削除か確認する** |
+| `-/+` | 一度削除して再作成 | **ダウンタイムが発生することがある** |
+
+> ⚠️ **`-`（削除）や `-/+`（再作成）が意図していないリソースに出た場合は、必ずClaude Codeに相談してから進めてください。**
+
+### 4-3. terraform apply（実際にAWSへ反映）
+
+planの内容を確認して問題なければ、applyを実行します。
+
+```powershell
+# stagingへ適用する場合
+terraform apply -var-file="staging.tfvars"
+
+# 実行確認のメッセージが出るので「yes」と入力してEnter
+# Do you want to perform these actions?
+#   Enter a value: yes
+```
+
+```powershell
+# 本番へ適用する場合（先にstagingで確認してから！）
+terraform apply -var-file="prod.tfvars"
+```
+
+実行が完了すると以下のように表示されます。
+
+```
+Apply complete! Resources: 1 added, 1 changed, 0 destroyed.
+```
+
+---
+
+## 📋 第5章：動作確認
+
+デプロイが完了したら、正しく反映されているか確認します。
+
+### 5-1. AWSコンソールで確認する
+
+```powershell
+# AWSコンソールを開くコマンド（デフォルトブラウザで開きます）
+Start-Process "https://console.aws.amazon.com/lambda/"
+```
+
+確認する項目：
+- Lambda関数のコードが最新バージョンになっているか
+- レイヤーが新しいバージョン番号になっているか
+- 環境変数が正しく設定されているか
+
+### 5-2. Lambda関数をテスト実行する
+
+```powershell
+# Lambda関数のテスト実行（関数名・プロファイルは実際のものに変更）
+aws lambda invoke `
+  --function-name <Lambda関数名> `
+  --payload '{"key": "value"}' `
+  --profile <あなたのプロファイル名> `
+  response.json
+
+# レスポンスを確認
+Get-Content response.json
+```
+
+### 5-3. ログを確認する
+
+```powershell
+# 直近のログを確認
+aws logs tail /aws/lambda/<Lambda関数名> `
+  --since 10m `
+  --profile <あなたのプロファイル名>
+```
+
+> ✅ **エラーが出ずに期待した結果が返ってくれば作業完了です！**
+
+---
+
+## 🚨 トラブルシューティング（よくあるエラーと対処法）
+
+### エラー1: `Error: Error acquiring the state lock`
+
+```
+原因: 前回のterraform実行が異常終了し、ロックが残っている
+対処:
+```
+
+```powershell
+terraform force-unlock <LOCK_ID>
+# LOCK_IDはエラーメッセージに記載されています
+```
+
+### エラー2: `Error: Provider configuration not present`
+
+```
+原因: AWSの認証情報が正しく設定されていない
+対処:
+```
+
+```powershell
+aws sso login --profile <プロファイル名>
+# ログイン後、再度terraform planを実行
+```
+
+### エラー3: Lambda関数のランタイムエラー
+
+```
+原因: レイヤーのライブラリが正しくインストールされていない
+対処: CloudWatch Logsでエラー内容を確認し、requirements.txtを見直す
+```
+
+```powershell
+# ログを確認
+aws logs tail /aws/lambda/<関数名> --since 5m --profile <プロファイル名>
+```
+
+### エラー4: `Error: error creating Lambda Layer Version`
+
+```
+原因: zipファイルのサイズが大きすぎる、またはパスが間違っている
+対処: Claude Codeにエラーメッセージを貼り付けて確認を依頼する
+```
+
+---
+
+## 📝 作業完了チェックリスト
+
+作業が終わったら、以下を確認してください。
+
+```
+□ git diff で確認した全ての変更ファイルに対応した
+□ terraform plan で意図しない削除（-）がなかった
+□ terraform apply が "Apply complete!" で終了した
+□ Lambda関数のテスト実行が成功した
+□ CloudWatch Logsにエラーが出ていない
+□ staging環境で確認してから本番に適用した
+```
+
+---
+
+## 💡 作業全体を通じたClaude Codeの活用ポイント
+
+| 場面 | Claude Codeへの依頼例 |
+|------|----------------------|
+| 差分の意味が分からない | 「このgit diffの変更がTerraformに何をもたらすか教えて」 |
+| HCLへの翻訳が不安 | 「このCDKコードに相当するTerraform HCLを書いて。既存コードと整合性を取ること」 |
+| planの結果が不安 | 「このterraform planの出力で影響が大きいリソースはどれか」 |
+| エラーが出た | エラーメッセージをそのままコピーして貼り付ける |
+| リカバリが必要 | 「apply前の状態に戻すにはどうすればいいか」 |
+
+> 💡 **最後に一言:** CDKとTerraformの差分反映は、慣れるまで複雑に感じますが、「何が変わったか把握 → Claude Codeで翻訳 → planで確認 → applyで適用」という4ステップを守れば、安全に進められます。不明な点はその都度Claude Codeに質問しながら進めましょう。
